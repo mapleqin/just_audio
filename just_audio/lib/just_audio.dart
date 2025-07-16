@@ -37,6 +37,8 @@ JustAudioPlatform get _pluginPlatform {
   return pluginPlatform;
 }
 
+JustAudioPlatform get justAudioPlatform => _pluginPlatform;
+
 /// An audio player that plays a gapless playlist of [AudioSource]s.
 ///
 /// ```
@@ -1625,25 +1627,23 @@ class AudioPlayer {
         // During initialisation, we must only use this platform reference in case
         // _platform is updated again during initialisation.
         final platform = active && !_disposed
-            ? await (_nativePlatform = initPlayer(
-                _pluginPlatform,
-                InitRequest(
-                  id: _id = _generateId(),
-                  audioLoadConfiguration: _audioLoadConfiguration?._toMessage(),
-                  androidAudioEffects: (_isAndroid() || _isUnitTest())
-                      ? _audioPipeline.androidAudioEffects
-                          .map((audioEffect) => audioEffect._toMessage())
-                          .toList()
-                      : [],
-                  darwinAudioEffects: (_isDarwin() || _isUnitTest())
-                      ? _audioPipeline.darwinAudioEffects
-                          .map((audioEffect) => audioEffect._toMessage())
-                          .toList()
-                      : [],
-                  androidOffloadSchedulingEnabled:
-                      _androidOffloadSchedulingEnabled,
-                  useLazyPreparation: _playlist.useLazyPreparation,
-                )))
+            ? await (_nativePlatform = initPlayer(InitRequest(
+                id: _id = _generateId(),
+                audioLoadConfiguration: _audioLoadConfiguration?._toMessage(),
+                androidAudioEffects: (_isAndroid() || _isUnitTest())
+                    ? _audioPipeline.androidAudioEffects
+                        .map((audioEffect) => audioEffect._toMessage())
+                        .toList()
+                    : [],
+                darwinAudioEffects: (_isDarwin() || _isUnitTest())
+                    ? _audioPipeline.darwinAudioEffects
+                        .map((audioEffect) => audioEffect._toMessage())
+                        .toList()
+                    : [],
+                androidOffloadSchedulingEnabled:
+                    _androidOffloadSchedulingEnabled,
+                useLazyPreparation: _playlist.useLazyPreparation,
+              )))
             : (_idlePlatform = _IdleAudioPlayer(
                 id: _id = _generateId(),
                 sequenceStream: sequenceStream,
@@ -1762,17 +1762,14 @@ class AudioPlayer {
   }
 
   /// Initializes the audio player.
-  Future<AudioPlayerPlatform> initPlayer(
-    JustAudioPlatform plugin,
-    InitRequest request,
-  ) async {
-    return await plugin.init(request);
+  Future<AudioPlayerPlatform> initPlayer(InitRequest request) async {
+    return await _pluginPlatform.init(request);
   }
 
   /// Disposes of the audio player.
   Future<DisposePlayerResponse> disposePlayer(
-      JustAudioPlatform plugin, DisposePlayerRequest request) async {
-    return await plugin.disposePlayer(request);
+      DisposePlayerRequest request) async {
+    return await _pluginPlatform.disposePlayer(request);
   }
 
   /// Disposes of the given platform.
@@ -1782,7 +1779,7 @@ class AudioPlayer {
     } else {
       _nativePlatform = null;
       try {
-        await disposePlayer(_pluginPlatform, DisposePlayerRequest(id: _id!));
+        await disposePlayer(DisposePlayerRequest(id: _id!));
       } catch (e) {
         // Fallback if disposePlayer hasn't been implemented.
         await platform.dispose(DisposeRequest());
