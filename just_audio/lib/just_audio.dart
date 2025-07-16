@@ -1625,23 +1625,25 @@ class AudioPlayer {
         // During initialisation, we must only use this platform reference in case
         // _platform is updated again during initialisation.
         final platform = active && !_disposed
-            ? await (_nativePlatform = _pluginPlatform.init(InitRequest(
-                id: _id = _generateId(),
-                audioLoadConfiguration: _audioLoadConfiguration?._toMessage(),
-                androidAudioEffects: (_isAndroid() || _isUnitTest())
-                    ? _audioPipeline.androidAudioEffects
-                        .map((audioEffect) => audioEffect._toMessage())
-                        .toList()
-                    : [],
-                darwinAudioEffects: (_isDarwin() || _isUnitTest())
-                    ? _audioPipeline.darwinAudioEffects
-                        .map((audioEffect) => audioEffect._toMessage())
-                        .toList()
-                    : [],
-                androidOffloadSchedulingEnabled:
-                    _androidOffloadSchedulingEnabled,
-                useLazyPreparation: _playlist.useLazyPreparation,
-              )))
+            ? await (_nativePlatform = initPlayer(
+                _pluginPlatform,
+                InitRequest(
+                  id: _id = _generateId(),
+                  audioLoadConfiguration: _audioLoadConfiguration?._toMessage(),
+                  androidAudioEffects: (_isAndroid() || _isUnitTest())
+                      ? _audioPipeline.androidAudioEffects
+                          .map((audioEffect) => audioEffect._toMessage())
+                          .toList()
+                      : [],
+                  darwinAudioEffects: (_isDarwin() || _isUnitTest())
+                      ? _audioPipeline.darwinAudioEffects
+                          .map((audioEffect) => audioEffect._toMessage())
+                          .toList()
+                      : [],
+                  androidOffloadSchedulingEnabled:
+                      _androidOffloadSchedulingEnabled,
+                  useLazyPreparation: _playlist.useLazyPreparation,
+                )))
             : (_idlePlatform = _IdleAudioPlayer(
                 id: _id = _generateId(),
                 sequenceStream: sequenceStream,
@@ -1759,6 +1761,20 @@ class AudioPlayer {
     return _platform.then((_) => durationCompleter.future);
   }
 
+  /// Initializes the audio player.
+  Future<AudioPlayerPlatform> initPlayer(
+    JustAudioPlatform plugin,
+    InitRequest request,
+  ) async {
+    return await plugin.init(request);
+  }
+
+  /// Disposes of the audio player.
+  Future<DisposePlayerResponse> disposePlayer(
+      JustAudioPlatform plugin, DisposePlayerRequest request) async {
+    return await plugin.disposePlayer(request);
+  }
+
   /// Disposes of the given platform.
   Future<void> _disposePlatform(AudioPlayerPlatform platform) async {
     if (platform is _IdleAudioPlayer) {
@@ -1766,7 +1782,7 @@ class AudioPlayer {
     } else {
       _nativePlatform = null;
       try {
-        await _pluginPlatform.disposePlayer(DisposePlayerRequest(id: _id!));
+        await disposePlayer(_pluginPlatform, DisposePlayerRequest(id: _id!));
       } catch (e) {
         // Fallback if disposePlayer hasn't been implemented.
         await platform.dispose(DisposeRequest());
